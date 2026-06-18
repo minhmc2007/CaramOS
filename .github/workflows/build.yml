@@ -36,10 +36,10 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             echo "Building release from tag ${GITHUB_REF_NAME}"
             AIROOTFS_IMAGE_TOOL_OPTIONS='-comp xz -Xbcj x86 -b 1M -Xdict-size 1M' \
-              mkarchiso -v -w /work -o /app/out /app/profile
+              mkarchiso -v -w /work -o "$PWD/out" "$PWD/profile"
           else
             echo "Building dev ISO"
-            mkarchiso -v -w /work -o /app/out /app/profile
+            mkarchiso -v -w /work -o "$PWD/out" "$PWD/profile"
           fi
 
       - name: Generate checksums
