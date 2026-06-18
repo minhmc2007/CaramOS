@@ -21,6 +21,11 @@ SUPPORT_URL="https://github.com/minhmc2007/CaramOS/issues"
 EOF
 
 # --------------------------------------------------
+# Root account (unlock for live session)
+# --------------------------------------------------
+passwd -d root
+
+# --------------------------------------------------
 # Locale & timezone
 # --------------------------------------------------
 sed -i 's/#vi_VN.UTF-8/vi_VN.UTF-8/' /etc/locale.gen
@@ -30,9 +35,9 @@ ln -sf /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
 echo "Asia/Ho_Chi_Minh" > /etc/timezone
 
 # --------------------------------------------------
-# Plymouth boot splash
+# Plymouth boot splash (use bgrt theme if caramos theme missing)
 # --------------------------------------------------
-if [ -f /usr/share/plymouth/themes/caramos/caramos.plymount ]; then
+if [ -f /usr/share/plymouth/themes/caramos/caramos.plymouth ]; then
     plymouth-set-default-theme caramos -R 2>/dev/null || true
 fi
 
@@ -52,7 +57,7 @@ ZRAM
 systemctl enable NetworkManager.service
 systemctl enable lightdm.service
 systemctl enable systemd-resolved.service
-systemctl enable fcitx5-lotus-server@root.service 2>/dev/null || true
+# fcitx5-lotus-server@root.service  # TODO: enable when fcitx5-lotus is available
 
 # --------------------------------------------------
 # Live session: root autologin via LightDM
