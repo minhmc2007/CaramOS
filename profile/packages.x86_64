@@ -1,0 +1,104 @@
+# CaramOS — packages for mkarchiso live ISO
+# One package per line, # for comments
+
+# === Base system ===
+base
+base-devel
+linux
+linux-firmware
+sudo
+systemd
+systemd-resolvconf
+
+# === Live ISO infrastructure ===
+arch-install-scripts
+mkinitcpio-archiso
+squashfs-tools
+xorriso
+grub
+syslinux
+efibootmgr
+dosfstools
+mtools
+
+# === Desktop environment ===
+cinnamon
+cinnamon-translations
+nemo
+nemo-fileroller
+lightdm
+plank
+
+# === From caramos-repo ===
+caramos-keyring
+lightdm-slick-greeter
+fcitx5-lotus
+google-chrome
+wps-office-cn
+zalo
+xed
+xviewer
+xreader
+cinnamon-delight-theme
+
+# === Vietnamese input ===
+fcitx5
+fcitx5-gtk
+fcitx5-qt
+fcitx5-configtool
+
+# === Display manager & session ===
+lightdm
+accountsservice
+
+# === Utilities ===
+flameshot
+vlc
+gimp
+tlp
+copyq
+flatpak
+gnome-software
+dkms
+
+# === Office ===
+libreoffice-still
+libreoffice-still-vi
+
+# === Appearance ===
+noto-fonts-emoji
+ttf-dejavu
+cantarell-fonts
+bibata-cursor-theme
+tela-circle-icon-theme
+
+# === Firmware & drivers ===
+linux-firmware
+amd-ucode
+
+# === Network ===
+networkmanager
+network-manager-applet
+wireless_tools
+wpa_supplicant
+
+# === Sound ===
+pipewire
+pipewire-pulse
+wireplumber
+alsa-utils
+
+# === Plymouth boot splash ===
+plymouth
+
+# === ZRAM ===
+zram-generator
+
+# === Build deps for customization ===
+git
+wget
+curl
+unzip
+gnupg
+ca-certificates
+python

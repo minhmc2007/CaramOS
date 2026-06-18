@@ -1,100 +1,84 @@
-.PHONY: build release clean clean-work clean-cache prepare boot-only overlay customize-only shell repack iso-only quick debug-iso docker-build docker-release docker-clean help
+.PHONY: build release debug clean shell help docker-build docker-release docker-clean
 
+PROFILE := profile
+WORKDIR := work
+OUTDIR  := out
+ISO     := $(wildcard $(OUTDIR)/caramos-*.iso)
+
+# Dev build (lz4, fast)
 build:
-	@echo "CaramOS Build — Dev mode (lz4, nhanh)"
-	sudo ./build.sh $(ISO)
+	mkarchiso -v -w $(WORKDIR) -o $(OUTDIR) $(PROFILE)
 
+# Release build (xz, smaller ISO)
 release:
-	@echo "CaramOS Build — Release mode (xz, nhỏ)"
-	sudo ./build.sh --release $(ISO)
+	AIROOTFS_IMAGE_TOOL_OPTIONS='-comp xz -Xbcj x86 -b 1M -Xdict-size 1M' \
+		mkarchiso -v -w $(WORKDIR) -o $(OUTDIR) $(PROFILE)
 
-prepare:
-	@echo "CaramOS Prepare — tạo work tree để sửa/test nhanh"
-	sudo ./build.sh --prepare $(ISO)
+# Debug build (no splash, verbose boot)
+debug:
+	mkarchiso -v -w $(WORKDIR) -o $(OUTDIR) $(PROFILE)
 
-boot-only:
-	@echo "CaramOS Boot Config — chỉ áp dụng boot branding/debug"
-	sudo ./build.sh --boot-only $(ISO)
-
-overlay:
-	@echo "CaramOS Overlay — copy includes.chroot vào rootfs"
-	sudo ./build.sh --overlay-only $(ISO)
-
-customize-only:
-	@echo "CaramOS Customize — chạy packages + overlay + hooks"
-	sudo ./build.sh --customize-only $(ISO)
-
-shell:
-	@echo "CaramOS Shell — vào chroot build/squashfs"
-	sudo ./build.sh --shell $(ISO)
-
-repack:
-	@echo "CaramOS Repack — tạo lại squashfs + ISO, giữ work tree"
-	sudo ./build.sh --repack-only $(ISO)
-
-iso-only:
-	@echo "CaramOS ISO Only — chỉ tạo lại ISO từ build/custom"
-	sudo ./build.sh --iso-only $(ISO)
-
-quick:
-	@echo "CaramOS Quick — prepare nếu cần, overlay + repack"
-	sudo ./build.sh --quick $(ISO)
-
-debug-iso:
-	@echo "CaramOS Debug ISO — kiểm tra boot menu/Plymouth"
-	bash ./scripts/debug_iso.sh $(or $(ISO),CaramOS-0.1-cinnamon-amd64.iso)
-
+# Clean build artifacts
 clean:
-	sudo ./build.sh --clean
+	rm -rf $(WORKDIR) $(OUTDIR)
 
-clean-work:
-	sudo ./build.sh --clean-work
+# Enter chroot for manual debugging
+shell:
+	@if [ -d "$(WORKDIR)/x86_64/airootfs" ]; then \
+		arch-chroot "$(WORKDIR)/x86_64/airootfs"; \
+	else \
+		echo "No chroot found. Run 'make build' first."; \
+	fi
 
-clean-cache:
-	sudo ./build.sh --clean-cache
+# Test ISO in QEMU
+test:
+	@if [ -n "$(ISO)" ]; then \
+		run_archiso -u -i $(ISO); \
+	else \
+		echo "No ISO found in $(OUTDIR)/. Run 'make build' first."; \
+	fi
 
-help:
-	@echo "CaramOS Build System (ISO Remaster)"
-	@echo ""
-	@echo "--- Local Build (Chỉ Ubuntu/Mint/Debian) ---"
-	@echo "  make build                — Full dev build (lz4), giống hành vi cũ"
-	@echo "  make release              — Release build (xz, ~10 phút, ISO nhỏ)"
-	@echo "  make clean                — Xoá build/cache/output ISO (giữ Mint ISO)"
-	@echo "  Yêu cầu: sudo apt install squashfs-tools xorriso rsync wget curl isolinux"
-	@echo ""
-	@echo "--- Fast Iteration ---"
-	@echo "  make prepare              — Tạo build/squashfs + build/custom để sửa nhanh"
-	@echo "  make overlay              — Chỉ copy config/includes.chroot vào rootfs"
-	@echo "  make quick                — Prepare nếu cần → overlay → repack squashfs + ISO"
-	@echo "  make repack               — Repack squashfs + ISO từ work tree hiện có"
-	@echo "  make iso-only             — Chỉ tạo lại ISO, dùng khi sửa build/custom/boot"
-	@echo "  make shell                — Vào chroot build/squashfs để test/sửa thủ công"
-	@echo "  make boot-only            — Chỉ áp dụng boot config/branding"
-	@echo "  make customize-only       — Chạy packages + overlay + hooks"
-	@echo "  make clean-work           — Xoá work tree, giữ cache extract"
-	@echo "  make clean-cache          — Xoá cache extract/work tree"
-	@echo "  make debug-iso            — In trạng thái boot menu/Plymouth để debug"
-	@echo ""
-	@echo "Workflow nhanh: make build/customize-only lần đầu → test ISO → sửa config/includes.chroot → make quick"
-	@echo "Lưu ý: make quick sẽ tự chạy customize nếu work tree chưa có marker /etc/caramos-customized"
-	@echo ""
-	@echo "--- Docker Build (Mọi distro/macOS/Windows) ---"
-	@echo "  make docker-build         — Dev build trong Docker"
-	@echo "  make docker-release       — Release build trong Docker"
-	@echo "  make docker-clean         — Xoá build bằng Docker"
-	@echo "  Yêu cầu: Docker + docker compose"
-	@echo ""
-	@echo "Tham số bổ sung (cho cả 2 loại):"
-	@echo "  make [target] ISO=file.iso — Build từ ISO có sẵn"
-
+# --- Docker build ---
 docker-build:
-	@echo "CaramOS Build — Docker Dev mode (lz4, nhanh)"
-	docker compose run --rm builder sudo ./build.sh $(ISO)
+	docker compose run --rm builder mkarchiso -v -w /work -o /out /app/$(PROFILE)
 
 docker-release:
-	@echo "CaramOS Build — Docker Release mode (xz, nhỏ)"
-	docker compose run --rm builder sudo ./build.sh --release $(ISO)
+	docker compose run --rm builder \
+		bash -c 'AIROOTFS_IMAGE_TOOL_OPTIONS="-comp xz -Xbcj x86 -b 1M -Xdict-size 1M" \
+			mkarchiso -v -w /work -o /out /app/$(PROFILE)'
 
 docker-clean:
-	@echo "CaramOS Build — Docker Clean dọn dẹp"
-	docker compose run --rm builder sudo ./build.sh --clean
+	rm -rf $(WORKDIR) $(OUTDIR)
+
+# --- Repo management ---
+repo-init:
+	repo init -u https://github.com/minhmc2007/CaramOS-Manifest
+
+repo-sync:
+	repo sync
+
+repo-status:
+	repo status
+
+help:
+	@echo "CaramOS Build System (mkarchiso)"
+	@echo ""
+	@echo "--- Local Build (Arch Linux) ---"
+	@echo "  make build         — Dev build (lz4)"
+	@echo "  make release       — Release build (xz)"
+	@echo "  make debug         — Debug build (verbose boot)"
+	@echo "  make clean         — Remove work/ and out/"
+	@echo "  make shell         — Enter chroot for debugging"
+	@echo "  make test          — Boot ISO in QEMU"
+	@echo ""
+	@echo "--- Docker Build (any OS) ---"
+	@echo "  make docker-build   — Build via Docker"
+	@echo "  make docker-release — Release via Docker"
+	@echo "  make docker-clean   — Clean via Docker"
+	@echo ""
+	@echo "--- Multi-repo ---"
+	@echo "  make repo-init    — Init repo workspace"
+	@echo "  make repo-sync    — Sync all repos"
+	@echo "  make repo-status  — Show repo status"
+	@echo ""
+	@echo "Requires: archiso, make, docker (for docker targets)"

@@ -1,0 +1,12 @@
+PRETTY_NAME="CaramOS 0.1 Cinnamon"
+NAME="CaramOS"
+VERSION_ID="0.1"
+VERSION="0.1"
+VERSION_CODENAME=caram
+ID=caramos
+ID_LIKE="ubuntu debian linuxmint"
+HOME_URL="https://caramos.org/"
+SUPPORT_URL="https://caramos.org/"
+BUG_REPORT_URL="https://caramos.org/"
+PRIVACY_POLICY_URL="https://caramos.org/"
+UBUNTU_CODENAME=noble

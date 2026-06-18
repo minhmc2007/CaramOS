@@ -5,10 +5,6 @@ services:
     privileged: true
     stdin_open: true
     tty: true
-    environment:
-      CI: "1"
-      DEBIAN_FRONTEND: noninteractive
-      APT_LOCK_TIMEOUT: "600"
     volumes:
       - .:/app
       - /dev:/dev

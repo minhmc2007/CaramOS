@@ -1,11 +1,5 @@
-# Build artifacts
-build/
-CaramOS-*.iso
+work/
+out/
+*.iso
 *.log
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Mint ISO (large file, don't commit)
-linuxmint-*.iso
+SHA256SUMS

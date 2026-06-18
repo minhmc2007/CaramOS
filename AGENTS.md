@@ -1,148 +1,155 @@
-# CaramOS - Bản phân phối Linux (ISO Remaster)
+# CaramOS — Arch-based Linux Distribution (mkarchiso)
 
 ## Tổng quan dự án
 
-CaramOS là bản phân phối Linux dựa trên Linux Mint 22 (Ubuntu 24.04 LTS), thiết kế cho người dùng Việt Nam. Phương pháp build: ISO Remaster — giải nén ISO gốc → tùy biến (packages, overlay, hooks) → đóng gói lại (squashfs + xorriso).
+CaramOS là bản phân phối Linux dựa trên Arch Linux, thiết kế cho người dùng Việt Nam.
+Phương pháp build: mkarchiso profile → packages + overlay + customize → ISO.
 
-## Cấu trúc dự án
+## Multi-repo Structure (managed via `repo` tool)
 
 ```
-./
-├── build.sh              # Script build chính (điểm khởi đầu)
-├── Makefile              # Các target build
-├── scripts/              # Các module build
-│   ├── config.sh         # Version, mirror, cấu hình output
-│   ├── utils.sh          # Log, kiểm tra root, cài deps, tải ISO
-│   ├── extract.sh        # Mount ISO + rsync + unsquashfs
-│   ├── customize.sh      # Chroot + packages + overlay + hooks
-│   ├── repack.sh         # mksquashfs + xorriso → ISO
-│   ├── boot_config.sh    # Boot menu + Plymouth branding
-│   ├── overlay.sh        # Copy includes.chroot vào rootfs
-│   ├── chroot_shell.sh   # Debug chroot
-│   └── debug_iso.sh      # Kiểm tra boot splash/Plymouth
-├── config/
-│   ├── packages.txt      # Packages cần thêm (plank, fcitx5, chrome...)
-│   ├── hooks/live/       # Hooks chạy bên trong chroot
-│   │   └── NNNN-ten.hook.chroot  # Đặt tên theo thứ tự ưu tiên (0100, 0200...)
-│   └── includes.chroot/  # Overlay files copy vào rootfs
-│       ├── etc/          # dconf, lightdm, skel, locale, hostname
-│       └── usr/share/    # applications, backgrounds, icons, themes
-├── docker-compose.yml    # Cấu hình Docker builder
-├── Dockerfile            # Ubuntu 24.04 base cho containerized build
-└── assets/              # Logo, banner images
+caramos-workspace/
+├── core/        → CaramOS-Core   — mkarchiso ISO profile + build system
+├── packages/    → CaramOS-Repo   — Custom Arch PKGBUILDs + pacman repo CI
+├── manifest/    → CaramOS-Manifest — repo tool manifest XML
+└── default.xml  → symlink to manifest/default.xml
+```
+
+### Setup workspace
+
+```bash
+repo init -u https://github.com/minhmc2007/CaramOS-Manifest
+repo sync
+```
+
+## CaramOS-Core Structure
+
+```
+profile/                          # mkarchiso profile
+├── profiledef.sh                 # Metadata (iso_name, bootmodes, compression)
+├── packages.x86_64               # Packages to install
+├── pacman.conf                   # pacman config (includes [caramos] repo)
+├── airootfs/                     # Overlay files copied into rootfs
+│   ├── etc/                      # Configs (dconf, lightdm, skel, locale, hostname)
+│   ├── usr/share/                # applications, backgrounds, icons, themes
+│   └── root/customize.sh         # Post-install customization script
+├── syslinux/                     # BIOS boot config (branded)
+├── grub/                         # GRUB config (branded)
+└── efiboot/                      # systemd-boot UEFI (branded)
+```
+
+## CaramOS-Repo Structure
+
+```
+PKGBUILDs/         # Source PKGBUILDs
+├── fcitx5-lotus/
+├── lightdm-slick-greeter/
+├── google-chrome/
+├── wps-office-cn/
+├── zalo/
+├── xed/
+├── xviewer/
+├── xreader/
+└── cinnamon-delight-theme/
+repo/              # Generated pacman database + .pkg.tar.zst files
+.github/workflows/ # CI: build packages → update repo → deploy to Pages
 ```
 
 ## Lệnh build
 
-### Build Local (Chỉ Ubuntu/Mint/Debian)
+### Local Build (Arch Linux)
 
-- `make build` — Build dev đầy đủ (nén lz4, nhanh)
-- `make release` — Build release (nén xz, ISO nhỏ hơn)
-- `make prepare` — Giải nén ISO ra build/ để sửa/test nhanh
-- `make quick` — Prepare nếu cần → overlay → repack (lặp nhanh)
-- `make overlay` — Chỉ copy includes.chroot vào rootfs
-- `make customize-only` — Chạy packages + overlay + hooks
-- `make repack` — Repack squashfs + ISO từ work tree có sẵn
-- `make iso-only` — Tạo lại ISO chỉ từ build/custom
-- `make shell` — Vào chroot build/squashfs để debug thủ công
-- `make boot-only` — Chỉ áp dụng boot config + Plymouth branding
-- `make clean` — Xóa toàn bộ build/cache/output (giữ source ISO)
+- `make build` — Dev build (lz4, nhanh)
+- `make release` — Release build (xz, ISO nhỏ hơn)
+- `make debug` — Debug build (verbose kernel log)
+- `make clean` — Xoá work/ và out/
+- `make shell` — Vào chroot để debug thủ công
+- `make test` — Boot ISO trong QEMU (UEFI)
 
-### Build Docker (Mọi hệ điều hành)
+### Docker Build (Mọi hệ điều hành)
 
 - `make docker-build` — Build dev trong Docker container
 - `make docker-release` — Build release trong Docker container
 - `make docker-clean` — Clean build qua Docker
 
-### Debug
-
-- `make debug-iso` — Kiểm tra trạng thái boot menu/Plymouth
-- `make debug-iso ISO=ten_file.iso` — Kiểm tra ISO cụ thể
-
-### Tham số
-
-- `make build ISO=linuxmint-22.3-cinnamon-64bit.iso` — Build từ ISO có sẵn
-
-## Quy trình build
+### Quy trình build
 
 ```
-1. extract.sh     Mount source ISO → rsync filesystem → unsquashfs
-   → build/squashfs/ (base chỉ đọc)
-   → build/custom/ (work tree)
-
-2. customize.sh   chroot vào build/custom/
-   → Cài packages từ config/packages.txt
-   → Copy overlay từ config/includes.chroot/
-   → Chạy các script hooks trong config/hooks/live/
-
-3. repack.sh      mksquashfs build/custom/ → build/CaramOS.sfs
-   → xorriso → CaramOS-VERSION-cinnamon-amd64.iso
+1. mkarchiso đọc profile/
+2. Pacstrap packages từ packages.x86_64 (official repos + caramos-repo)
+3. Copy overlay từ profile/airootfs/ vào rootfs
+4. Chạy profile/airootfs/root/customize.sh (branding, services, cleanup)
+5. Tạo squashfs → GRUB/syslinux/systemd-boot → ISO
 ```
 
 ## Quy ước
 
-### Hook Files
+### Customize Script
 
-- Vị trí: `config/hooks/live/`
-- Đặt tên: `NNNN-ten.hook.chroot` (prefix 4 số thứ tự)
-- Thứ tự thực thi: Tăng dần theo số (0100, 0200, 0900...)
-- Ví dụ: `0100-caramos-setup.hook.chroot`
+- Vị trí: `profile/airootfs/root/customize.sh`
+- Chạy trong chroot SAU KHI packages + overlay đã applied
+- Xử lý: branding, locale, services, desktop defaults, cleanup
+- Thay thế tất cả các hook cũ (0100-foo.hook.chroot, 0200-bar.hook.chroot...)
 
-### Bash Scripts
+### Kernel Boot Parameters
 
-- Dùng `set -e` để xử lý lỗi
-- Tất cả scripts trong `scripts/` đều có thể chạy độc lập với `--help`
+- Dev: `quiet splash` (Plymouth loading screen)
+- Debug: `verbose` (hiện kernel log, tắt splash)
+
+### Overlay Rules
+
+- `profile/airootfs/etc/` — Config files ghi đè lên package defaults
+- `profile/airootfs/usr/share/` — Assets (wallpapers, icons, themes, plymouth)
+- Không include file tạm/large binary trong overlay
 
 ### Cấu hình Version
 
-- Chỉnh sửa `scripts/config.sh` để thay đổi: MINT_VERSION, CARAMOS_VERSION, MIRROR, OUTPUT_ISO
-- Nén mặc định: lz4 (dev nhanh), xz cho release
+- `profile/profiledef.sh`: `iso_version`, `iso_label`
+- Rolling release — `iso_version` = date (YYYY.MM.DD)
 
 ### Output
 
-- ISO output: `CaramOS-${CARAMOS_VERSION}-cinnamon-amd64.iso`
-- Build artifacts: thư mục `./build/`
-- Source ISO được giữ nguyên trong cache/ sau khi extract
+- ISO output: `out/caramos-YYYY-MM-DD-x86_64.iso`
+- Work directory: `work/` (có thể xoá sau build)
 
 ## Lưu ý quan trọng
 
 ### Yêu cầu
 
-- Build cần **sudo/root** (mount, chroot, loop operations)
-- Build local: Ubuntu 24.04/Mint 22/Debian base
-- Build Docker hoạt động trên mọi hệ điều hành (macOS, Windows, mọi distro Linux)
+- Build cần **Arch Linux** (native) hoặc Docker
+- Yêu cầu gói: `archiso`, `make`
+- Docker build hoạt động trên mọi hệ điều hành (macOS, Windows, Linux)
 
-### Khuyến nghị dùng Docker
+### CaramOS-Repo packages
 
-Dùng Docker để build nếu không dùng Ubuntu 24.04:
-
-```bash
-docker compose up --build builder
-# hoặc đơn giản:
-make docker-build
-```
+Các package custom được build và host riêng tại repo `CaramOS-Repo`:
+- fcitx5-lotus (thay vì fcitx5-unikey trên official repos)
+- lightdm-slick-greeter (không có sẵn trên Arch)
+- google-chrome, wps-office-cn, zalo
+- xed, xviewer, xreader
+- cinnamon-delight-theme
 
 ### CI/CD
 
-GitHub Actions workflow trong `.github/workflows/build.yml` build trên Ubuntu 24.04 runners.
+- CaramOS-Core: GitHub Actions build ISO trên `archlinux:latest`
+- CaramOS-Repo: GitHub Actions build PKGBUILDs, update pacman DB, deploy Pages
 
 ### Git Workflow
 
-- Định dạng commit: prefix `[build]`, `[config]`, `[assets]`, `[docs]`
-- AGENTS.md: Commit lên Git để team share context
-- Không cần .claudeignore — project không phải TypeScript/Node.js
+- Làm việc trong workspace: `repo start <branch> --all`
+- Commit: `repo forall -c "git add -A && git commit -m 'msg'"`
+- Push: `repo upload` hoặc `repo forall -c "git push"`
 
-## Đóng góp
+## Bảng tra nhanh
 
-Để xem hướng dẫn chi tiết về đóng góp (kiến trúc, thêm packages, tạo hooks, sửa overlay, quy trình test), xem [CONTRIBUTING.md](CONTRIBUTING.md).
-
-Bảng tra nhanh:
-
-| Task                      | Vị trí                                   | Hành động                              |
-| ------------------------- | ---------------------------------------- | -------------------------------------- |
-| Thêm package              | `config/packages.txt`                    | Sửa file, sau đó `make customize-only` |
-| Tạo hook mới              | `config/hooks/live/NNNN-ten.hook.chroot` | Xem các hook có sẵn để lấy template    |
-| Sửa config hệ thống       | `config/includes.chroot/etc/`            | Sửa, sau đó `make overlay`             |
-| Sửa theme/icons           | `config/includes.chroot/usr/share/`      | Sửa, sau đó `make overlay`             |
-| Test toàn bộ sau thay đổi | —                                        | `make quick && test in VM`             |
-| Debug trong chroot        | —                                        | `make shell`                           |
+| Task                    | Vị trí                                        | Hành động                          |
+| ----------------------- | --------------------------------------------- | ----------------------------------- |
+| Thêm package            | `profile/packages.x86_64`                     | Sửa file, sau đó `make build`      |
+| Build pkg cho repo      | `packages/PKGBUILDs/<tên>/PKGBUILD`             | Push lên CaramOS-Repo, CI build   |
+| Sửa config hệ thống     | `profile/airootfs/etc/`                       | Sửa, sau đó `make build`           |
+| Sửa theme/icons         | `profile/airootfs/usr/share/`                 | Sửa, sau đó `make build`           |
+| Sửa boot config         | `profile/syslinux/`, `profile/grub/`, ...    | Sửa, sau đó `make build`           |
+| Sửa customize script    | `profile/airootfs/root/customize.sh`          | Sửa, sau đó `make build`           |
+| Thêm branding asset     | `assets/` → copy vào `profile/airootfs/`      | Copy + rebuild ISO                 |
+| Debug trong chroot      | `make shell`                                  | Sau khi build một lần              |
+| Test ISO trong QEMU     | `make test`                                   | Sau khi build                      |
