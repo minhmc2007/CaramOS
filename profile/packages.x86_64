@@ -32,20 +32,21 @@ plank
 # === From caramos-repo ===
 caramos-keyring
 lightdm-slick-greeter
-fcitx5-lotus
 google-chrome
-wps-office-cn
-zalo
-xed
-xviewer
-xreader
 cinnamon-delight-theme
+# fcitx5-lotus        # TODO: PKGBUILD needs fixing (build error)
+# wps-office-cn       # TODO: download URL needs updating
+# zalo                # TODO: download URL needs updating
+# xed                 # TODO: needs gtksourceview4 dep fix
+# xviewer             # TODO: needs libxapp dep from AUR
+# xreader             # TODO: needs libxapp dep from AUR
 
 # === Vietnamese input ===
 fcitx5
 fcitx5-gtk
 fcitx5-qt
 fcitx5-configtool
+fcitx5-unikey
 
 # === Display manager & session ===
 lightdm
