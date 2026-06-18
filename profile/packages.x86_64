@@ -49,7 +49,6 @@ fcitx5-configtool
 fcitx5-unikey
 
 # === Display manager & session ===
-lightdm
 accountsservice
 
 # === Utilities ===
@@ -70,11 +69,10 @@ libreoffice-still-vi
 noto-fonts-emoji
 ttf-dejavu
 cantarell-fonts
-bibata-cursor-theme
-tela-circle-icon-theme
+capitaine-cursors
+tela-circle-icon-theme-all
 
 # === Firmware & drivers ===
-linux-firmware
 amd-ucode
 
 # === Network ===
