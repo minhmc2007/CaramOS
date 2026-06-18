@@ -18,5 +18,4 @@ file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/root"]="0:0:750"
   ["/root/customize.sh"]="0:0:755"
-  ["/usr/local/bin/choose-mirror"]="0:0:755"
 )
